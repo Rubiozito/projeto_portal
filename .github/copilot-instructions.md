@@ -38,10 +38,44 @@ Backend API project built with **Node.js + TypeScript**.
 ## Build and Test
 
 ```bash
-npm run build       # compiles TypeScript to dist/
-npm run dev         # runs with ts-node (development)
-npm run format      # formats all src files with Prettier
+npm run build         # compiles TypeScript to dist/
+npm run dev           # runs with ts-node (development)
+npm run format        # formats all src files with Prettier
 npm run format:check  # CI check for formatting
+npm test              # runs all tests once
+npm run test:watch    # runs tests in watch mode
+npm run test:coverage # runs tests with coverage report
+```
+
+## Project Structure
+
+```
+projeto_portal/
+├── src/
+│   ├── app.ts                        # Express app setup (sem listen)
+│   ├── index.ts                      # Entrypoint — chama app.listen()
+│   ├── modules/                      # Organizado por feature
+│   │   └── users/
+│   │       ├── index.ts              # Router do módulo
+│   │       ├── user-controller.ts
+│   │       ├── user-entity.ts        # IUser, UserRole, UserStatus
+│   │       ├── user-repository.ts
+│   │       └── user-service.ts
+│   └── shared/                       # Código compartilhado entre módulos
+│       ├── config/                   # Config tipada (env vars)
+│       ├── database/
+│       │   └── mock-database.ts      # Array em memória (substituir por DB real)
+│       ├── errors/
+│       │   ├── app-error.ts          # Classe base AppError
+│       │   ├── bad-request-error.ts  # 400
+│       │   └── duplicated-item-error.ts # 409
+│       ├── logger/
+│       └── middlewares/
+│           └── error-handler.ts      # Middleware global de erros
+└── test/                             # Testes espelham a estrutura de src/
+    └── modules/
+        └── users/
+            └── create-user.test.ts
 ```
 
 ## Security
