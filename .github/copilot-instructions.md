@@ -83,3 +83,8 @@ projeto_portal/
 - Validate all external input at the boundary (HTTP request, CLI args, env vars)
 - Never log sensitive data (passwords, tokens, PII)
 - Keep secrets in environment variables — never commit them
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->
