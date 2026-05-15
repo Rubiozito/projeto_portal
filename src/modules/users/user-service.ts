@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { BadRequestError } from '../../shared/errors/bad-request-error';
 import { DuplicatedItemError } from '../../shared/errors/duplicated-item-error';
+import { NotFoundError } from '../../shared/errors/not-found-error';
 import { IUser, UserRole, UserStatus } from './user-entity';
-import { create, findByEmail } from './user-repository';
+import { create, findByEmail, findById } from './user-repository';
 
 const createUserSchema = z.object({
   email: z.string().email(),
@@ -41,4 +42,21 @@ export function createUser(body: unknown): IUser {
   };
 
   return create(user);
+}
+
+const uuidSchema = z.string().uuid();
+
+export function getUserById(id: unknown): IUser {
+  const result = uuidSchema.safeParse(id);
+
+  if (!result.success) {
+    throw new BadRequestError('Invalid user ID: must be a valid UUID');
+  }
+
+  const user = findById(result.data);
+  if (!user) {
+    throw new NotFoundError('User not found');
+  }
+
+  return user;
 }
