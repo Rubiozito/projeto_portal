@@ -100,11 +100,13 @@ Test files live under `test/` mirroring the `src/` tree.
 
 This constitution supersedes all other written or verbal coding conventions for this
 project. Amendments require:
+
 1. A written proposal describing the change and its rationale.
 2. Explicit versioning increment (MAJOR / MINOR / PATCH — see versioning policy below).
 3. Propagation to all affected templates and documentation before the amendment is merged.
 
 **Versioning policy**:
+
 - MAJOR — removes or redefines an existing principle in a backward-incompatible way.
 - MINOR — adds a new principle or materially expands an existing one.
 - PATCH — clarifications, wording fixes, non-semantic refinements.
