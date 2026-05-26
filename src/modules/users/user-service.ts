@@ -1,44 +1,67 @@
-import { z } from 'zod';
-import { BadRequestError } from '../../shared/errors/bad-request-error';
+import { randomUUID } from 'crypto';
+
 import { DuplicatedItemError } from '../../shared/errors/duplicated-item-error';
-import { IUser, UserRole, UserStatus } from './user-entity';
-import { create, findByEmail } from './user-repository';
+import { NotFoundError } from '../../shared/errors/not-found-error';
 
-const createUserSchema = z.object({
-  email: z.string().email(),
-  name: z.string().min(1),
-  role: z.nativeEnum(UserRole),
-  startDate: z.string().datetime(),
-  status: z.nativeEnum(UserStatus),
-});
+import { IUser } from './user-entity';
+import { IUserRepository } from './user-repository';
+import { CreateUserInput, UpdateUserInput } from './user-schemas';
 
-export type CreateUserDTO = z.infer<typeof createUserSchema>;
+export class UserService {
+  constructor(private readonly repository: IUserRepository) {}
 
-export function createUser(body: unknown): IUser {
-  const result = createUserSchema.safeParse(body);
+  createUser(input: CreateUserInput): IUser {
+    const existing = this.repository.findByEmail(input.email);
+    if (existing) {
+      throw new DuplicatedItemError('Email already registered');
+    }
 
-  if (!result.success) {
-    const message = result.error.issues
-      .map((e: { message: string }) => e.message)
-      .join(', ');
-    throw new BadRequestError(message);
+    const user: IUser = {
+      id: randomUUID(),
+      name: input.name,
+      email: input.email,
+      creationDate: new Date().toISOString(),
+      role: input.role,
+      ...(input.companyId !== undefined && { companyId: input.companyId }),
+    };
+
+    return this.repository.create(user);
   }
 
-  const data = result.data;
-
-  const existing = findByEmail(data.email);
-  if (existing) {
-    throw new DuplicatedItemError('Email already in use');
+  getUserById(id: string): IUser {
+    const user = this.repository.findById(id);
+    if (!user) throw new NotFoundError('User not found');
+    return user;
   }
 
-  const user: IUser = {
-    id: crypto.randomUUID(),
-    email: data.email,
-    name: data.name,
-    role: data.role,
-    startDate: new Date(data.startDate),
-    status: data.status,
-  };
+  getAllUsers(): IUser[] {
+    return this.repository.findAll();
+  }
 
-  return create(user);
+  updateUser(id: string, input: UpdateUserInput): IUser {
+    const user = this.repository.findById(id);
+    if (!user) throw new NotFoundError('User not found');
+
+    if (input.email !== undefined && input.email !== user.email) {
+      const emailTaken = this.repository.findByEmail(input.email);
+      if (emailTaken) throw new DuplicatedItemError('Email already registered');
+    }
+
+    const patch: Partial<IUser> = {};
+    if (input.name !== undefined) patch.name = input.name;
+    if (input.email !== undefined) patch.email = input.email;
+    if (input.companyId !== undefined) {
+      // null means clear; string means set
+      patch.companyId = input.companyId === null ? undefined : input.companyId;
+    }
+
+    const updated = this.repository.update(id, patch);
+    if (!updated) throw new NotFoundError('User not found');
+    return updated;
+  }
+
+  deleteUser(id: string): void {
+    const deleted = this.repository.delete(id);
+    if (!deleted) throw new NotFoundError('User not found');
+  }
 }
