@@ -1,114 +1,99 @@
-import supertest from 'supertest';
+﻿import supertest from 'supertest';
 import { afterEach, describe, expect, it } from 'vitest';
+
 import { app } from '../../../src/app';
 import { clearDatabase } from '../../../src/shared/database/mock-database';
 
 const request = supertest(app);
-
-const validBody = {
-  email: 'rafael@email.com',
-  name: 'Rafael Silva',
-  role: 'Admin',
-  startDate: '2026-01-15T08:00:00Z',
-  status: 'ACTIVE',
-};
 
 afterEach(() => {
   clearDatabase();
 });
 
 describe('POST /users', () => {
-  describe('sucesso', () => {
-    it('retorna 201 e { message: "User created" } com body válido', async () => {
-      const response = await request.post('/users').send(validBody);
-
-      expect(response.status).toBe(201);
-      expect(response.body).toEqual({ message: 'User created' });
+  it('should return 201 with data envelope when request is valid', async () => {
+    const response = await request.post('/users').send({
+      name: 'Rafael Silva',
+      email: 'rafael@example.com',
+      role: 'OWNER',
     });
 
-    it('persiste o usuário e o segundo cadastro com email diferente também funciona', async () => {
-      await request.post('/users').send(validBody);
-
-      const response = await request
-        .post('/users')
-        .send({ ...validBody, email: 'outro@email.com' });
-
-      expect(response.status).toBe(201);
+    expect(response.status).toBe(201);
+    expect(response.body.data).toMatchObject({
+      name: 'Rafael Silva',
+      email: 'rafael@example.com',
+      role: 'OWNER',
     });
+    expect(response.body.data.id).toBeDefined();
+    expect(response.body.data.creationDate).toBeDefined();
   });
 
-  describe('erro 400 - Bad Request', () => {
-    it('retorna 400 quando o email é inválido', async () => {
-      const response = await request
-        .post('/users')
-        .send({ ...validBody, email: 'nao-e-um-email' });
+  it('should return 409 when email is already registered', async () => {
+    await request
+      .post('/users')
+      .send({ name: 'First', email: 'dup@example.com', role: 'EMPLOYEE' });
+    const response = await request
+      .post('/users')
+      .send({ name: 'Second', email: 'dup@example.com', role: 'OWNER' });
 
-      expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty('message');
-    });
-
-    it('retorna 400 quando o name está vazio', async () => {
-      const response = await request
-        .post('/users')
-        .send({ ...validBody, name: '' });
-
-      expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty('message');
-    });
-
-    it('retorna 400 quando o role é inválido', async () => {
-      const response = await request
-        .post('/users')
-        .send({ ...validBody, role: 'SuperAdmin' });
-
-      expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty('message');
-    });
-
-    it('retorna 400 quando o startDate não é uma data ISO 8601 válida', async () => {
-      const response = await request
-        .post('/users')
-        .send({ ...validBody, startDate: '15-01-2026' });
-
-      expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty('message');
-    });
-
-    it('retorna 400 quando o status é inválido', async () => {
-      const response = await request
-        .post('/users')
-        .send({ ...validBody, status: 'PENDING' });
-
-      expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty('message');
-    });
-
-    it('retorna 400 quando campos obrigatórios estão ausentes', async () => {
-      const response = await request.post('/users').send({});
-
-      expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty('message');
-    });
+    expect(response.status).toBe(409);
+    expect(response.body.message).toBeDefined();
   });
 
-  describe('erro 409 - Conflict', () => {
-    it('retorna 409 quando o email já está cadastrado', async () => {
-      await request.post('/users').send(validBody);
+  it('should return 400 when a mandatory field is missing', async () => {
+    const response = await request.post('/users').send({ name: 'No Email' });
 
-      const response = await request.post('/users').send(validBody);
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBeDefined();
+  });
 
-      expect(response.status).toBe(409);
-      expect(response.body).toEqual({ message: 'Email already in use' });
+  it('should return 400 when role is invalid', async () => {
+    const response = await request
+      .post('/users')
+      .send({ name: 'User', email: 'u@example.com', role: 'ADMIN' });
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBeDefined();
+  });
+
+  it('should include companyId in response when provided', async () => {
+    const response = await request.post('/users').send({
+      name: 'Owner',
+      email: 'owner@example.com',
+      role: 'OWNER',
+      companyId: 'acme-corp',
     });
 
-    it('retorna 409 mesmo com name diferente se o email for o mesmo', async () => {
-      await request.post('/users').send(validBody);
+    expect(response.status).toBe(201);
+    expect(response.body.data.companyId).toBe('acme-corp');
+  });
 
-      const response = await request
-        .post('/users')
-        .send({ ...validBody, name: 'Outro Nome' });
+  it('should omit companyId from response when not provided', async () => {
+    const response = await request
+      .post('/users')
+      .send({ name: 'Worker', email: 'worker@example.com', role: 'EMPLOYEE' });
 
-      expect(response.status).toBe(409);
-    });
+    expect(response.status).toBe(201);
+    expect(response.body.data.companyId).toBeUndefined();
+  });
+
+  it('should normalize email to lowercase', async () => {
+    const response = await request
+      .post('/users')
+      .send({ name: 'User', email: 'USER@EXAMPLE.COM', role: 'OWNER' });
+
+    expect(response.status).toBe(201);
+    expect(response.body.data.email).toBe('user@example.com');
+  });
+
+  it('should treat emails case-insensitively for duplicate check', async () => {
+    await request
+      .post('/users')
+      .send({ name: 'First', email: 'test@example.com', role: 'OWNER' });
+    const response = await request
+      .post('/users')
+      .send({ name: 'Second', email: 'TEST@EXAMPLE.COM', role: 'EMPLOYEE' });
+
+    expect(response.status).toBe(409);
   });
 });

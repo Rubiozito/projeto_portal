@@ -1,20 +1,14 @@
 export enum UserRole {
-  Owner = 'Owner',
-  Admin = 'Admin',
-  Employee = 'Employee',
-  External = 'External',
-}
-
-export enum UserStatus {
-  ACTIVE = 'ACTIVE',
-  INACTIVE = 'INACTIVE',
+  OWNER = 'OWNER',
+  EMPLOYEE = 'EMPLOYEE',
+  EXTERNAL = 'EXTERNAL',
 }
 
 export interface IUser {
   id: string;
-  email: string;
   name: string;
+  email: string;
+  creationDate: string;
   role: UserRole;
-  startDate: Date;
-  status: UserStatus;
+  companyId?: string;
 }
