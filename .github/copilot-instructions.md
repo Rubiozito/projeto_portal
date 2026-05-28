@@ -88,6 +88,6 @@ projeto_portal/
 
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-`specs/001-user-crud/plan.md`
+`specs/002-company-entity/plan.md`
 
 <!-- SPECKIT END -->
